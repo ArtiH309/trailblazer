@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     JWT_EXPIRE_MINUTES: int = 60 * 24 * 7 # 7 days
     CORS_ALLOW_ORIGINS: str = "*"
 
+    NPS_API_KEY: str | None = None
+
     class Config:
         env_file = ".env"
 
