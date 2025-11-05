@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware  # Allow mobile app to call A
 from app.db import engine, Base  # SQLAlchemy engine + declarative Base
 from app.routers import trails # Feature router for /trails endpoints
 from app.routers import auth  # same thing but for authentication
+from app.routers import parks
 
 
 #App initialization
@@ -52,6 +53,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(trails.router)
+app.include_router(parks.router)
 
 
 # Static files for uploading images
