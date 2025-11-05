@@ -25,8 +25,8 @@ from sqlalchemy.exc import IntegrityError
 from app.db import SessionLocal
 from app import models, schemas
 
-from app.callback import get_current_user
-from app.models import User
+from app.callback import get_current_user, get_db
+from app.models import User, Trail, Review
 
 
 router = APIRouter(prefix="/trails", tags=["trails"])
@@ -144,3 +144,25 @@ def add_review(
     db.commit()
 
     return schemas.MsgOut(ok=True, message="Review added")
+
+
+# GET /trails/{trail_id}/rewviews (this is to see the reviews)
+@router.get("/{trail_id}/reviews", response_model=List[schemas.ReviewOut])
+def list_reviews_for_trail(
+    trail_id: int,
+    db: Session = Depends(get_db),
+):
+    # make sure the trail actually exists
+    trail = db.get(Trail, trail_id)
+    if not trail:
+        raise HTTPException(status_code=404, detail="Trail not found")
+
+    # sort by newest trails first
+    reviews = (
+        db.query(Review)
+        .filter(Review.trail_id == trail_id)
+        .order_by(Review.created_at.desc())
+        .all()
+    )
+    return reviews
+
