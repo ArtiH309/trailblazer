@@ -1,1 +1,3 @@
-accidentally uploaded main file outside of the app folder
+accidentally uploaded main.py file outside of the app folder and it wouldnt let me delete so enjoy this txt files that can be notes
+
+gotta still work on the account creation bc for some reason making a password is messed up
