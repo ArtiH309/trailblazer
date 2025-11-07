@@ -101,7 +101,7 @@ def login(data: LoginIn, db: Session = Depends(get_db)):
     return TokenOut(access_token=token)
 
 
-@router.post("/about", response_model=UserOut) # fetches user information
+@router.get("/about", response_model=UserOut) # fetches user information
 def about(current_user: User = Depends(get_current_user)):
     return current_user
 
