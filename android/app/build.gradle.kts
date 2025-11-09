@@ -10,6 +10,18 @@ plugins {
 }
 
 android {
+    defaultConfig {
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+}
+
+dependencies {
+    testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+}
+
+android {
     namespace = "com.example.trailblazer"
     compileSdk = 36
 
@@ -53,6 +65,10 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
+
+    // ⭐ MATERIAL ICONS EXTENDED - THIS IS THE FIX ⭐
+    implementation("androidx.compose.material:material-icons-extended:1.7.5")
+
     implementation(libs.core.ktx)
     debugImplementation("androidx.compose.ui:ui-tooling")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
