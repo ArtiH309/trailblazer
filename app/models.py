@@ -175,7 +175,7 @@ class Favorite(Base):
     trail: Mapped["Trail"] = relationship(back_populates="favorites")
 
     __table_args__ = (
-        UniqueConstraint("user_id", "trail_id", name="uq_favorites_user_trail"))
+        UniqueConstraint("user_id", "trail_id", name="uq_favorites_user_trail"),)
 
 
 
@@ -253,4 +253,4 @@ class OfflineDownload(Base):
     trail: Mapped["Trail"] = relationship(back_populates="offline_downloads")
 
     __table_args__ = (
-        UniqueConstraint("user_id", "trail_id", name="uq_offline_user_trail"))
+        UniqueConstraint("user_id", "trail_id", name="uq_offline_user_trail"),)
