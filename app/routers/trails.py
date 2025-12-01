@@ -17,7 +17,10 @@ Notes:
 from typing import Generator, List, Optional
 from math import radians, sin, cos, asin, sqrt
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
+from datetime import datetime
+import os
+import pathlib
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
@@ -26,7 +29,7 @@ from app.db import SessionLocal
 from app import models, schemas
 
 from app.callback import get_current_user, get_db
-from app.models import User, Trail, Review
+from app.models import User, Trail, Review, Photos
 
 
 router = APIRouter(prefix="/trails", tags=["trails"])
@@ -161,8 +164,97 @@ def list_reviews_for_trail(
     reviews = (
         db.query(Review)
         .filter(Review.trail_id == trail_id)
-        .order_by(Review.created_at.desc())
         .all()
     )
     return reviews
 
+
+
+def safe_file(original: str) -> str: # this just cleans the filename so there shouldnt be any path components in the name.
+    name = os.path.basename(original)
+
+
+@router.post("/{trail_id}/photos", response_model=schemas.PhotosOut)
+def upload_photo(
+    # uploads a photo to the trail, requires auth of user, 
+    trail_id: int,
+    file: UploadFile = File(..., description="Uploaded image file"),
+    caption: str | None = Form(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    trail = db.get(Trail, trail_id)
+
+    if not trail:
+        raise HTTPException(status_code=404, detail="Trail not found")
+    
+    if not (file.content_type or "").startswith("image/"):
+        raise HTTPException(status_code=400, detail="Only images allowed")
+    
+    folder = pathlib.Path("media") / "trails" / str(trail_id)
+    folder.mkdir(parents=True, exist_ok=True)
+
+    ts = int(datetime.utcnow().timestamp())
+    safe_name = safe_file(file.filename or "upload.bin")
+    dest_rel = pathlib.Path("trails") / str(trail_id) / f"{ts}_{safe_name}"
+    dest_abs = pathlib.Path("media") / dest_rel
+
+    # Save file
+    with dest_abs.open("wb") as out:
+        out.write(file.file.read())
+
+    # Save DB row
+    photo = Photos(
+        trail_id=trail_id,
+        user_id=current_user.id,
+        file_path=str(dest_rel).replace("\\", "/"),
+        caption=caption,
+    )
+    db.add(photo)
+    db.commit()
+    db.refresh(photo)
+
+    # url that gets pushed out for users
+    url = f"/media/{photo.file_path}"
+    return schemas.PhotosOut(
+        id=photo.id,
+        trail_id=photo.trail_id,
+        user_id=photo.user_id,
+        caption=photo.caption,
+        created_at=photo.created_at,
+        url=url,
+    )
+
+
+@router.get("/{trail_id}/photos", response_model=list[schemas.PhotosOut])
+def list_trail_photos(
+    trail_id: int,
+    db: Session = Depends(get_db),
+):
+    """
+    List photos for a trail
+    """
+    trail = db.get(Trail, trail_id)
+    if not trail:
+        raise HTTPException(status_code=404, detail="Trail not found")
+
+    photos = (
+        db.query(Photos)
+        .filter(Photos.trail_id == trail_id)
+        .order_by(Photos.created_at.desc())
+        .all()
+    )
+
+    out: list[schemas.PhotosOut] = []
+    for p in photos:
+        out.append(
+            schemas.PhotosOut(
+                id=p.id,
+                trail_id=p.trail_id,
+                user_id=p.user_id,
+                caption=p.caption,
+                created_at=p.created_at,
+                url=f"/media/{p.file_path}",
+            )
+        )
+    return out

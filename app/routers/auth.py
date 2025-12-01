@@ -8,7 +8,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field
-from passlib.hash import bcrypt
+from passlib.context import CryptContext # kept getting password is not 72 bytes error so hope this helps instead
 import jwt
 
 from sqlalchemy.orm import Session
@@ -19,6 +19,32 @@ from app.config import settings
 from app.callback import get_db, get_current_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+pwd_context = CryptContext( # password hashing with cryptcontext
+    schemes=["bcrypt_sha256"],
+    deprecated="auto",
+)
+
+
+
+def hash_password(plain: str) -> str:
+    return pwd_context.hash(plain)
+
+def verify_password(plain: str, hashed: str) -> bool:
+    return pwd_context.verify(plain, hashed)
+
+
+def create_access_token(*, user_id: int) -> str:
+    now = datetime.now(tz=timezone.utc)
+    exp = now + timedelta(minutes=settings.JWT_EXPIRE_MINUTES)
+    payload = {
+        "sub": str(user_id), # subject = user id
+        "iat": int(now.timestamp()), # issued-at
+        "exp": int(exp.timestamp()), # expiry
+    }
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALG)
+
 
 
 
@@ -45,7 +71,7 @@ class UserOut(BaseModel): # user can access this information
     time_created: datetime
 
     class Config: # allows to fetch the information
-        from_attribute = True
+        from_attributes = True
 
 
 class PasswordChange(BaseModel):
@@ -81,7 +107,7 @@ def register(data: RegisterIn, db: Session = Depends(get_db)):
 
     user = User(
         email=data.email,
-        password_hash=bcrypt.hash(data.password),
+        password_hash=hash_password(data.password),
         display_name=data.display_name,
     )
     db.add(user)
@@ -95,7 +121,7 @@ def register(data: RegisterIn, db: Session = Depends(get_db)):
 @router.post("/login", response_model=TokenOut)
 def login(data: LoginIn, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == data.email).first()
-    if not user or not bcrypt.verify(data.password, user.password_hash): # if email not found or invalid password
+    if not user or not verify_password(data.password, user.password_hash): # if email not found or invalid password
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_access_token(user_id=user.id)
     return TokenOut(access_token=token)
@@ -111,10 +137,10 @@ def change_password(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    if not bcrypt.verify(payload.current_password, current_user.password_hash): # remember, the user is changing their password bc they want to, not bc they forgot it. 
+    if not verify_password(payload.current_password, current_user.password_hash): # remember, the user is changing their password bc they want to, not bc they forgot it. 
         raise HTTPException(status_code=400, detail="Current password is incorrect") # first, they need to provide their current password to be able to change it to a new one.
     
-    current_user.password_hash = bcrypt.hash(payload.new_password)
+    current_user.password_hash = hash_password(payload.new_password)
     db.add(current_user)
     db.commit()
     return
