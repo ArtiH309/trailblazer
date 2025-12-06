@@ -50,8 +50,16 @@ app.add_middleware(
 # POST /auth/login which lets the user log into the account
 # added some more but will write out later ^^^^
 
-app.include_router(auth.router, trails.router, parks.router, notes.router, notes.router, favorites.router, nps_admin.router, activities.router, profiles.router, posts.router, offline.router)
-
+app.include_router(auth.router)
+app.include_router(trails.router)
+app.include_router(parks.router)
+app.include_router(notes.router)
+app.include_router(favorites.router)
+app.include_router(nps_admin.router)
+app.include_router(activities.router)
+app.include_router(profiles.router)
+app.include_router(posts.router)
+app.include_router(offline.router)
 
 
 # Static files for uploading images

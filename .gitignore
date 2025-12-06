@@ -19,3 +19,9 @@ app/build/
 # OS junk
 .DS_Store
 Thumbs.db
+
+# ENV
+.env
+
+# Trailblazer DB
+trailblazer.db

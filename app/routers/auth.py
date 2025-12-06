@@ -22,7 +22,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 pwd_context = CryptContext( # password hashing with cryptcontext
-    schemes=["bcrypt_sha256"],
+    schemes=["pbkdf2_sha256"],
     deprecated="auto",
 )
 
