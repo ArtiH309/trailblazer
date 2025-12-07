@@ -2,16 +2,13 @@
 package com.example.trailblazer.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Hiking
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,62 +20,41 @@ import androidx.compose.ui.unit.sp
 import com.example.trailblazer.net.ApiClient
 import com.example.trailblazer.net.TrailDto
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
-
-data class DownloadedTrail(
-    val id: Int,
-    val name: String,
-    val distance: String,
-    val size: String,
-    val downloadedDate: String
-)
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.BarChart
 
 @Composable
 fun OfflineScreen(
     onNavigate: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var downloadedTrails by remember { mutableStateOf<List<DownloadedTrail>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(false) }
+    var offlineTrails by remember { mutableStateOf<List<TrailDto>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var showAddDialog by remember { mutableStateOf(false) }
-    var trailIdInput by remember { mutableStateOf("") }
+    var totalSize by remember { mutableStateOf(0) }
 
     val scope = rememberCoroutineScope()
 
-    fun mapTrailToDownloaded(trail: TrailDto): DownloadedTrail {
-        val miles = (trail.lengthKm ?: 0.0) * 0.621371
-        val milesText = "${(miles * 10.0).roundToInt() / 10.0} mi"
-        return DownloadedTrail(
-            id = trail.id,
-            name = trail.name,
-            distance = milesText,
-            size = "--",
-            downloadedDate = "Saved for offline"
-        )
+    fun loadOfflineTrails() {
+        scope.launch {
+            isLoading = true
+            try {
+                offlineTrails = ApiClient.service.getOfflineTrails()
+                // Simulate size calculation
+                totalSize = offlineTrails.size * 5 // 5 MB per trail (simulated)
+            } catch (e: Exception) {
+                errorMessage = e.message
+            } finally {
+                isLoading = false
+            }
+        }
     }
 
     LaunchedEffect(Unit) {
-        isLoading = true
-        try {
-            val trails = ApiClient.service.getOfflineTrails()
-            downloadedTrails = trails.map(::mapTrailToDownloaded)
-        } catch (e: Exception) {
-            errorMessage = e.message ?: "Failed to load offline trails."
-        } finally {
-            isLoading = false
-        }
-    }
-
-    fun refreshOffline() {
-        scope.launch {
-            try {
-                val trails = ApiClient.service.getOfflineTrails()
-                downloadedTrails = trails.map(::mapTrailToDownloaded)
-            } catch (e: Exception) {
-                errorMessage = e.message ?: "Failed to refresh offline trails."
-            }
-        }
+        loadOfflineTrails()
     }
 
     Column(
@@ -86,254 +62,291 @@ fun OfflineScreen(
             .fillMaxSize()
             .background(Color(0xFFF5F5F5))
     ) {
-        // Header
+        // Top Bar
         Surface(
-            color = Color.White,
-            shadowElevation = 2.dp
+            color = Color(0xFF4CAF50),
+            shadowElevation = 4.dp
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Offline Downloads",
-                    fontSize = 20.sp,
+                    text = "Offline Maps",
+                    fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF212121)
+                    color = Color.White
                 )
-
-                Button(
-                    onClick = { showAddDialog = true },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF4CAF50)
-                    ),
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text("Add for Offline", fontSize = 14.sp)
-                }
             }
         }
 
-        if (errorMessage != null) {
-            Text(
-                text = errorMessage ?: "",
-                color = Color(0xFFD32F2F),
+        if (isLoading) {
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                fontSize = 13.sp
-            )
-        }
-
-        LazyColumn(
-            modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Storage Card (still dummy numbers, but fine for now)
-            item {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
+                    .fillMaxSize()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = Color(0xFF4CAF50))
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .weight(1f),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Storage Info
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.CloudDownload,
-                                contentDescription = null,
-                                tint = Color(0xFF4CAF50),
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(Modifier.width(12.dp))
-                            Column {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Storage,
+                                    null,
+                                    tint = Color(0xFF4CAF50),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(Modifier.width(8.dp))
                                 Text(
-                                    text = "Storage Usage",
+                                    text = "Storage Used",
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = Color(0xFF212121)
                                 )
+                            }
+
+                            Spacer(Modifier.height(12.dp))
+
+                            LinearProgressIndicator(
+                                progress = { (totalSize / 500f).coerceAtMost(1f) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(8.dp),
+                                color = Color(0xFF4CAF50),
+                                trackColor = Color(0xFFE0E0E0),
+                            )
+
+                            Spacer(Modifier.height(8.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
                                 Text(
-                                    text = "96.6 MB used of 512 MB",
-                                    fontSize = 13.sp,
+                                    text = "$totalSize MB used",
+                                    fontSize = 14.sp,
+                                    color = Color(0xFF757575)
+                                )
+                                Text(
+                                    text = "${offlineTrails.size} trails",
+                                    fontSize = 14.sp,
                                     color = Color(0xFF757575)
                                 )
                             }
                         }
+                    }
+                }
 
-                        Spacer(Modifier.height(12.dp))
-
-                        LinearProgressIndicator(
-                            progress = { 0.19f },
+                // Info Card
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFE3F2FD)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(8.dp),
-                            color = Color(0xFF4CAF50),
-                            trackColor = Color(0xFFE0E0E0)
-                        )
-
-                        Spacer(Modifier.height(8.dp))
-
-                        Text(
-                            text = "415.2 MB available for offline trails",
-                            fontSize = 12.sp,
-                            color = Color(0xFF757575)
-                        )
-                    }
-                }
-            }
-
-            // Downloaded Trails Section
-            item {
-                Text(
-                    text = "Downloaded Trails (${downloadedTrails.size})",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF212121)
-                )
-            }
-
-            if (isLoading) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = Color(0xFF4CAF50))
-                    }
-                }
-            } else {
-                items(downloadedTrails) { trail ->
-                    DownloadedTrailCard(
-                        trail = trail,
-                        onDelete = {
-                            scope.launch {
-                                try {
-                                    ApiClient.service.toggleOffline(trail.id)
-                                    refreshOffline()
-                                } catch (e: Exception) {
-                                    errorMessage = e.message ?: "Failed to remove offline trail."
-                                }
-                            }
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Info,
+                                null,
+                                tint = Color(0xFF2196F3),
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                text = "Download trails to access them without internet connection",
+                                fontSize = 14.sp,
+                                color = Color(0xFF1976D2),
+                                lineHeight = 20.sp
+                            )
                         }
+                    }
+                }
+
+                // Downloaded Trails Header
+                item {
+                    Text(
+                        text = "Downloaded Trails",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF212121)
                     )
                 }
-            }
 
-            // Offline Tips Card
-            item {
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFFE3F2FD)
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = null,
-                            tint = Color(0xFF2196F3),
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                text = "Offline Tips",
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFF1976D2)
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                text = "• Download trails before heading to areas with poor reception\n" +
-                                        "• Maps include trail routes, elevation profiles, and key waypoints\n" +
-                                        "• Downloaded content automatically updates when connected\n" +
-                                        "• GPS tracking works offline for safety",
-                                fontSize = 13.sp,
-                                color = Color(0xFF1565C0),
-                                lineHeight = 18.sp
-                            )
+                // Trail List
+                if (offlineTrails.isEmpty()) {
+                    item {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.CloudOff,
+                                    null,
+                                    modifier = Modifier.size(48.dp),
+                                    tint = Color(0xFFBDBDBD)
+                                )
+                                Text(
+                                    text = "No offline trails",
+                                    fontSize = 16.sp,
+                                    color = Color(0xFF757575)
+                                )
+                                Text(
+                                    text = "Download trails from the map to use offline",
+                                    fontSize = 14.sp,
+                                    color = Color(0xFF9E9E9E)
+                                )
+                            }
                         }
+                    }
+                } else {
+                    items(offlineTrails) { trail ->
+                        OfflineTrailCard(
+                            trail = trail,
+                            onRemove = {
+                                scope.launch {
+                                    try {
+                                        ApiClient.service.toggleOffline(trail.id)
+                                        loadOfflineTrails()
+                                    } catch (e: Exception) {
+                                        errorMessage = e.message
+                                    }
+                                }
+                            }
+                        )
                     }
                 }
             }
         }
 
-        // Bottom Nav
+        // Bottom Navigation
         BottomNavigationBar(
             currentScreen = "Offline",
             onNavigate = onNavigate
         )
     }
+}
+// ADD THIS CODE TO THE END OF OfflineScreen.kt
+// (After the TrailCard function, just before the final closing brace)
 
-    if (showAddDialog) {
-        AlertDialog(
-            onDismissRequest = { showAddDialog = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val id = trailIdInput.toIntOrNull()
-                        if (id != null) {
-                            scope.launch {
-                                try {
-                                    ApiClient.service.toggleOffline(id)
-                                    refreshOffline()
-                                    trailIdInput = ""
-                                    showAddDialog = false
-                                } catch (e: Exception) {
-                                    errorMessage = e.message ?: "Failed to save offline trail."
-                                }
-                            }
-                        }
-                    }
-                ) {
-                    Text("Save")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showAddDialog = false }) {
-                    Text("Cancel")
-                }
-            },
-            title = { Text("Save trail for offline") },
-            text = {
-                OutlinedTextField(
-                    value = trailIdInput,
-                    onValueChange = { trailIdInput = it },
-                    label = { Text("Trail ID") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        )
+@Composable
+private fun BottomNavigationBar(
+    currentScreen: String,
+    onNavigate: (String) -> Unit
+) {
+    Surface(
+        color = Color.White,
+        shadowElevation = 8.dp,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            NavItem(
+                icon = Icons.Default.LocationOn,
+                label = "Map",
+                isSelected = currentScreen == "Map",
+                onClick = { onNavigate("Map") }
+            )
+            NavItem(
+                icon = Icons.Default.Group,
+                label = "Community",
+                isSelected = currentScreen == "Community",
+                onClick = { onNavigate("Community") }
+            )
+            NavItem(
+                icon = Icons.Default.Person,
+                label = "Profile",
+                isSelected = currentScreen == "Profile",
+                onClick = { onNavigate("Profile") }
+            )
+            NavItem(
+                icon = Icons.Default.BarChart,
+                label = "Progress",
+                isSelected = currentScreen == "Progress",
+                onClick = { onNavigate("Progress") }
+            )
+            NavItem(
+                icon = Icons.Default.CloudDownload,
+                label = "Offline",
+                isSelected = currentScreen == "Offline",
+                onClick = { onNavigate("Offline") }
+            )
+        }
     }
 }
 
 @Composable
-private fun DownloadedTrailCard(
-    trail: DownloadedTrail,
-    onDelete: () -> Unit
+private fun NavItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .padding(8.dp)
+    ) {
+        Icon(
+            icon,
+            contentDescription = label,
+            tint = if (isSelected) Color(0xFF4CAF50) else Color(0xFF9E9E9E),
+            modifier = Modifier.size(24.dp)
+        )
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            color = if (isSelected) Color(0xFF4CAF50) else Color(0xFF9E9E9E)
+        )
+    }
+}
+
+
+// ALSO ADD THESE IMPORTS AT THE TOP IF MISSING:
+@Composable
+private fun OfflineTrailCard(
+    trail: TrailDto,
+    onRemove: () -> Unit
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -342,59 +355,57 @@ private fun DownloadedTrailCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Icon
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .background(Color(0xFFE8F5E9), RoundedCornerShape(8.dp)),
+                    .background(Color(0xFFE8F5E9), RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.Hiking,
-                    contentDescription = null,
+                    Icons.Default.CloudDone,
+                    null,
                     tint = Color(0xFF4CAF50),
                     modifier = Modifier.size(28.dp)
                 )
             }
 
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(16.dp))
 
-            // Trail Info
+            // Details
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = trail.name,
-                    fontSize = 15.sp,
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = Color(0xFF212121)
                 )
-                Text(
-                    text = trail.distance,
-                    fontSize = 13.sp,
-                    color = Color(0xFF757575)
-                )
-                Text(
-                    text = trail.size,
-                    fontSize = 12.sp,
-                    color = Color(0xFF9E9E9E)
-                )
-                Text(
-                    text = trail.downloadedDate,
-                    fontSize = 11.sp,
-                    color = Color(0xFF9E9E9E)
-                )
+                Spacer(Modifier.height(4.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "${String.format("%.1f", (trail.lengthKm ?: 0.0) * 0.621371)} mi",
+                        fontSize = 14.sp,
+                        color = Color(0xFF757575)
+                    )
+                    Text(
+                        text = "~5 MB",
+                        fontSize = 14.sp,
+                        color = Color(0xFF757575)
+                    )
+                }
             }
 
             // Delete Button
-            IconButton(
-                onClick = onDelete
-            ) {
+            IconButton(onClick = onRemove) {
                 Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Delete",
-                    tint = Color(0xFFE91E63)
+                    Icons.Default.Delete,
+                    "Remove",
+                    tint = Color(0xFFE57373)
                 )
             }
         }

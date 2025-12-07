@@ -12,13 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import com.example.trailblazer.ui.screens.CommunityScreen
-import com.example.trailblazer.ui.screens.HomeMapScreen
-import com.example.trailblazer.ui.screens.LoginScreen
-import com.example.trailblazer.ui.screens.OfflineScreen
-import com.example.trailblazer.ui.screens.ProfileScreen
-import com.example.trailblazer.ui.screens.ProgressScreen
-import com.example.trailblazer.ui.screens.RegisterScreen
+import com.example.trailblazer.ui.screens.*
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,32 +29,39 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+sealed class Screen {
+    object Login : Screen()
+    object Register : Screen()
+    object Map : Screen()
+    object Community : Screen()
+    object Profile : Screen()
+    object Progress : Screen()
+    object Offline : Screen()
+    data class TrailDetail(val trailId: Int) : Screen()
+    object EditProfile : Screen()
+}
+
 @Composable
 fun AppNavigation() {
-    // Simple string-based navigation for this project
-    var currentScreen by remember { mutableStateOf("Login") }
+    var currentScreen by remember { mutableStateOf<Screen>(Screen.Login) }
 
-    when (currentScreen) {
-        "Login" -> LoginScreen(
+    when (val screen = currentScreen) {
+        is Screen.Login -> LoginScreen(
             onLoginSuccess = {
-                // User logged in successfully – go to main map
-                currentScreen = "Map"
+                currentScreen = Screen.Map
             },
             onNavigateToRegister = {
-                currentScreen = "Register"
+                currentScreen = Screen.Register
             }
         )
 
-        "Register" -> RegisterScreen(
+        is Screen.Register -> RegisterScreen(
             onRegisterClick = { name, email, pass ->
-                // RegisterScreen already calls register + login + sets token.
-                // Once it reports success, go to the main map.
                 println("Registered user: $name ($email)")
-                currentScreen = "Map"
+                currentScreen = Screen.Map
             },
             onSignInClick = {
-                // From "Already have an account? Sign In"
-                currentScreen = "Login"
+                currentScreen = Screen.Login
             },
             onGoogleClick = {
                 println("Google sign in clicked (not implemented)")
@@ -70,41 +71,91 @@ fun AppNavigation() {
             }
         )
 
-        "Map" -> HomeMapScreen(
+        is Screen.Map -> HomeMapScreen(
             onTrailClick = { trailId ->
                 println("Trail clicked: $trailId")
-                // In a fuller app, you could navigate to a TrailDetail screen here.
+                currentScreen = Screen.TrailDetail(trailId)
             },
-            onNavigateToScreen = { screen ->
-                // Bottom nav uses these names: "Map", "Community", "Profile", "Progress", "Offline"
-                currentScreen = screen
+            onNavigateToScreen = { screenName ->
+                currentScreen = when (screenName) {
+                    "Map" -> Screen.Map
+                    "Community" -> Screen.Community
+                    "Profile" -> Screen.Profile
+                    "Progress" -> Screen.Progress
+                    "Offline" -> Screen.Offline
+                    else -> Screen.Map
+                }
             }
         )
 
-        "Community" -> CommunityScreen(
-            onNavigate = { screen ->
-                currentScreen = screen
+        is Screen.Community -> CommunityScreen(
+            onNavigate = { screenName ->
+                currentScreen = when (screenName) {
+                    "Map" -> Screen.Map
+                    "Community" -> Screen.Community
+                    "Profile" -> Screen.Profile
+                    "Progress" -> Screen.Progress
+                    "Offline" -> Screen.Offline
+                    else -> Screen.Community
+                }
             }
         )
 
-        "Profile" -> ProfileScreen(
-            onNavigate = { screen ->
-                currentScreen = screen
+        is Screen.Profile -> ProfileScreen(
+            onNavigate = { screenName ->
+                currentScreen = when (screenName) {
+                    "Map" -> Screen.Map
+                    "Community" -> Screen.Community
+                    "Profile" -> Screen.Profile
+                    "Progress" -> Screen.Progress
+                    "Offline" -> Screen.Offline
+                    else -> Screen.Profile
+                }
             },
             onEditProfile = {
-                println("Edit profile clicked (not implemented)")
+                currentScreen = Screen.EditProfile
             }
         )
 
-        "Progress" -> ProgressScreen(
-            onNavigate = { screen ->
-                currentScreen = screen
+        is Screen.Progress -> ProgressScreen(
+            onNavigate = { screenName ->
+                currentScreen = when (screenName) {
+                    "Map" -> Screen.Map
+                    "Community" -> Screen.Community
+                    "Profile" -> Screen.Profile
+                    "Progress" -> Screen.Progress
+                    "Offline" -> Screen.Offline
+                    else -> Screen.Progress
+                }
             }
         )
 
-        "Offline" -> OfflineScreen(
-            onNavigate = { screen ->
-                currentScreen = screen
+        is Screen.Offline -> OfflineScreen(
+            onNavigate = { screenName ->
+                currentScreen = when (screenName) {
+                    "Map" -> Screen.Map
+                    "Community" -> Screen.Community
+                    "Profile" -> Screen.Profile
+                    "Progress" -> Screen.Progress
+                    "Offline" -> Screen.Offline
+                    else -> Screen.Offline
+                }
+            }
+        )
+
+        is Screen.TrailDetail -> TrailDetailScreen(
+            trailId = screen.trailId,
+            onBack = {
+                currentScreen = Screen.Map
+            }
+        )
+
+        is Screen.EditProfile -> EditProfileScreen(
+            onBack = {
+                currentScreen = Screen.Profile
+            },
+            onSave = {
+                currentScreen = Screen.Profile
             }
         )
     }

@@ -1,17 +1,14 @@
-// FILE: app/src/main/java/com/example/trailblazer/ui/screens/ProfileScreen.kt
+// FILE: android/app/src/main/java/com/example/trailblazer/ui/screens/ProfileScreen.kt
 package com.example.trailblazer.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Hiking
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,241 +20,361 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.trailblazer.net.ApiClient
 import com.example.trailblazer.net.ProfileDto
-import com.example.trailblazer.net.TrailDto
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
-
-data class UserTrail(
-    val id: Int,
-    val name: String,
-    val distance: String,
-    val difficulty: String
-)
 
 @Composable
 fun ProfileScreen(
     onNavigate: (String) -> Unit,
-    onEditProfile: () -> Unit,
+    onEditProfile: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    var selectedTab by remember { mutableStateOf(0) }
-    val tabs = listOf("Profile", "Achievements", "Settings")
-
     var profile by remember { mutableStateOf<ProfileDto?>(null) }
-    var favoriteTrails by remember { mutableStateOf<List<TrailDto>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+    var showSettings by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
-
-    fun mapTrailToUserTrail(trail: TrailDto): UserTrail {
-        val miles = (trail.lengthKm ?: 0.0) * 0.621371
-        val milesText = "${(miles * 10.0).roundToInt() / 10.0} mi"
-        return UserTrail(
-            id = trail.id,
-            name = trail.name,
-            distance = milesText,
-            difficulty = trail.difficulty ?: "Unknown"
-        )
-    }
 
     LaunchedEffect(Unit) {
         isLoading = true
         try {
-            val api = ApiClient.service
-            profile = api.getMyProfile()
-            favoriteTrails = api.getFavorites()
+            profile = ApiClient.service.getMyProfile()
         } catch (e: Exception) {
-            errorMessage = e.message ?: "Failed to load profile."
+            // Handle error - profile stays null
         } finally {
             isLoading = false
         }
     }
 
-    val userTrails: List<UserTrail> = favoriteTrails.map(::mapTrailToUserTrail)
-
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color(0xFFF5F5F5))
-    ) {
-        // Header with Tabs
-        Surface(
-            color = Color.White,
-            shadowElevation = 2.dp
+    Box(modifier = modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFFF5F5F5))
         ) {
-            Column {
-                Text(
-                    text = "Profile",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF212121),
-                    modifier = Modifier.padding(16.dp)
-                )
-
-                TabRow(
-                    selectedTabIndex = selectedTab,
-                    containerColor = Color.White,
-                    contentColor = Color(0xFF4CAF50)
+            // Top Bar
+            Surface(
+                color = Color(0xFF4CAF50),
+                shadowElevation = 4.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    tabs.forEachIndexed { index, title ->
-                        Tab(
-                            selected = selectedTab == index,
-                            onClick = { selectedTab = index },
-                            text = {
-                                Text(
-                                    text = title,
-                                    fontWeight = if (selectedTab == index) FontWeight.SemiBold else FontWeight.Normal
-                                )
-                            }
+                    Text(
+                        text = "Profile",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = { showSettings = true }) {
+                        Icon(
+                            Icons.Default.Settings,
+                            "Settings",
+                            tint = Color.White,
+                            modifier = Modifier.size(28.dp)
                         )
                     }
                 }
             }
-        }
 
-        if (errorMessage != null) {
-            Text(
-                text = errorMessage ?: "",
-                color = Color(0xFFD32F2F),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                fontSize = 13.sp
-            )
-        }
-
-        LazyColumn(
-            modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Profile Header
-            item {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    shape = RoundedCornerShape(12.dp)
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        val displayName = profile?.displayName ?: "TrailBlazer User"
-                        val avatarInitial = displayName.firstOrNull()?.uppercase() ?: "?"
-
-                        // Avatar
-                        Box(
-                            modifier = Modifier
-                                .size(80.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF4CAF50)),
-                            contentAlignment = Alignment.Center
+                    CircularProgressIndicator(color = Color(0xFF4CAF50))
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Profile Header
+                    item {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text(
-                                text = avatarInitial,
-                                color = Color.White,
-                                fontSize = 32.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                // Avatar
+                                Box(
+                                    modifier = Modifier
+                                        .size(100.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF4CAF50)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = (profile?.displayName?.firstOrNull() ?: "H").toString().uppercase(),
+                                        color = Color.White,
+                                        fontSize = 40.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+
+                                Spacer(Modifier.height(16.dp))
+
+                                Text(
+                                    text = profile?.displayName ?: "Hiker",
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF212121)
+                                )
+
+                                if (profile?.homeState != null) {
+                                    Text(
+                                        text = profile!!.homeState!!,
+                                        fontSize = 14.sp,
+                                        color = Color(0xFF757575)
+                                    )
+                                }
+
+                                if (profile?.bio != null) {
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        text = profile!!.bio!!,
+                                        fontSize = 14.sp,
+                                        color = Color(0xFF616161)
+                                    )
+                                }
+
+                                Spacer(Modifier.height(16.dp))
+
+                                Button(
+                                    onClick = onEditProfile,
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF4CAF50)
+                                    ),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Icon(Icons.Default.Edit, null, modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Edit Profile")
+                                }
+                            }
                         }
+                    }
 
-                        Spacer(Modifier.height(16.dp))
-
-                        // Name and Username
+                    // Stats Card
+                    item {
                         Text(
-                            text = displayName,
-                            fontSize = 20.sp,
+                            text = "Your Stats",
+                            fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF212121)
                         )
+                    }
+
+                    item {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(20.dp),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                StatItem(
+                                    icon = Icons.Default.Terrain,
+                                    value = String.format("%.1f", (profile?.totalDistanceKm ?: 0.0) * 0.621371),
+                                    label = "Miles",
+                                    color = Color(0xFF4CAF50)
+                                )
+                                StatItem(
+                                    icon = Icons.Default.Landscape,
+                                    value = "${profile?.totalTrailsCompleted ?: 0}",
+                                    label = "Trails",
+                                    color = Color(0xFF2196F3)
+                                )
+                                StatItem(
+                                    icon = Icons.Default.EmojiEvents,
+                                    value = "8",
+                                    label = "Badges",
+                                    color = Color(0xFFFF9800)
+                                )
+                            }
+                        }
+                    }
+
+                    // Achievements
+                    item {
                         Text(
-                            text = profile?.homeState?.let { "@${it.lowercase()}" } ?: "@hiker",
-                            fontSize = 14.sp,
-                            color = Color(0xFF757575)
+                            text = "Achievements",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF212121)
                         )
+                    }
 
-                        Spacer(Modifier.height(16.dp))
+                    item {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                AchievementItem(
+                                    icon = "🏆",
+                                    title = "First Steps",
+                                    description = "Complete your first trail",
+                                    unlocked = true
+                                )
+                                AchievementItem(
+                                    icon = "🥾",
+                                    title = "Trail Blazer",
+                                    description = "Hike 10 different trails",
+                                    unlocked = true
+                                )
+                                AchievementItem(
+                                    icon = "⛰️",
+                                    title = "Peak Seeker",
+                                    description = "Climb 5,000 feet total",
+                                    unlocked = true
+                                )
+                                AchievementItem(
+                                    icon = "🌟",
+                                    title = "Century Club",
+                                    description = "Complete 100 miles",
+                                    unlocked = false,
+                                    progress = String.format("%.1f/100 miles", (profile?.totalDistanceKm ?: 0.0) * 0.621371)
+                                )
+                                AchievementItem(
+                                    icon = "📸",
+                                    title = "Photographer",
+                                    description = "Upload 50 trail photos",
+                                    unlocked = false,
+                                    progress = "0/50 photos"
+                                )
+                                AchievementItem(
+                                    icon = "👥",
+                                    title = "Social Butterfly",
+                                    description = "Make 20 community posts",
+                                    unlocked = false,
+                                    progress = "0/20 posts"
+                                )
+                            }
+                        }
+                    }
 
-                        // Stats Row
-                        val trailsCount = profile?.totalTrailsCompleted ?: 0
-                        val reviewsCount = favoriteTrails.size
-                        val photosCount = 0 // You can wire this later with photo endpoint
-
+                    // Offline Trails
+                    item {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            StatItem(icon = Icons.Default.Hiking, value = trailsCount.toString(), label = "Trails")
-                            StatItem(icon = Icons.Default.Star, value = reviewsCount.toString(), label = "Favorites")
-                            StatItem(icon = Icons.Default.Image, value = photosCount.toString(), label = "Photos")
-                        }
-
-                        Spacer(Modifier.height(16.dp))
-
-                        // Edit Button
-                        OutlinedButton(
-                            onClick = onEditProfile,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = Color(0xFF4CAF50)
-                            ),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
+                            Text(
+                                text = "Offline Maps",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF212121)
                             )
-                            Spacer(Modifier.width(8.dp))
-                            Text("Edit")
+                            TextButton(onClick = { onNavigate("Offline") }) {
+                                Text("View All", color = Color(0xFF4CAF50))
+                            }
+                        }
+                    }
+
+                    item {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                OfflineTrailItem(
+                                    name = "North Woods Trail",
+                                    size = "4.2 MB",
+                                    date = "Downloaded 2 days ago"
+                                )
+                                OfflineTrailItem(
+                                    name = "Lake Loop Trail",
+                                    size = "5.8 MB",
+                                    date = "Downloaded 1 week ago"
+                                )
+                                OfflineTrailItem(
+                                    name = "Ramble Trail",
+                                    size = "3.5 MB",
+                                    date = "Downloaded 2 weeks ago"
+                                )
+                            }
                         }
                     }
                 }
             }
 
-            // Trail List Section
-            item {
-                Column {
-                    Text(
-                        text = "My Trails",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF212121)
+            // Bottom Navigation
+            Surface(
+                color = Color.White,
+                shadowElevation = 8.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    NavItem(
+                        icon = Icons.Default.Map,
+                        label = "Map",
+                        isSelected = false,
+                        onClick = { onNavigate("Map") }
                     )
-                    Spacer(Modifier.height(12.dp))
-
-                    if (isLoading) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(24.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(color = Color(0xFF4CAF50))
-                        }
-                    } else if (userTrails.isEmpty()) {
-                        Text(
-                            text = "No trails yet. Mark some favorites to see them here!",
-                            fontSize = 13.sp,
-                            color = Color(0xFF757575)
-                        )
-                    } else {
-                        userTrails.forEach { trail ->
-                            TrailListItem(trail)
-                            Spacer(Modifier.height(8.dp))
-                        }
-                    }
+                    NavItem(
+                        icon = Icons.Default.People,
+                        label = "Community",
+                        isSelected = false,
+                        onClick = { onNavigate("Community") }
+                    )
+                    NavItem(
+                        icon = Icons.Default.Person,
+                        label = "Profile",
+                        isSelected = true,
+                        onClick = { onNavigate("Profile") }
+                    )
+                    NavItem(
+                        icon = Icons.Default.Timeline,
+                        label = "Progress",
+                        isSelected = false,
+                        onClick = { onNavigate("Progress") }
+                    )
+                    NavItem(
+                        icon = Icons.Default.CloudDownload,
+                        label = "Offline",
+                        isSelected = false,
+                        onClick = { onNavigate("Offline") }
+                    )
                 }
             }
         }
 
-        // Bottom Nav
-        BottomNavigationBar(
-            currentScreen = "Profile",
-            onNavigate = onNavigate
-        )
+        // Settings Dialog
+        if (showSettings) {
+            SettingsDialog(onDismiss = { showSettings = false })
+        }
     }
 }
 
@@ -265,21 +382,22 @@ fun ProfileScreen(
 private fun StatItem(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     value: String,
-    label: String
+    label: String,
+    color: Color
 ) {
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = Color(0xFF4CAF50),
-            modifier = Modifier.size(20.dp)
+            icon,
+            null,
+            tint = color,
+            modifier = Modifier.size(32.dp)
         )
+        Spacer(Modifier.height(8.dp))
         Text(
             text = value,
-            fontSize = 18.sp,
+            fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFF212121)
         )
@@ -292,73 +410,205 @@ private fun StatItem(
 }
 
 @Composable
-private fun TrailListItem(trail: UserTrail) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        shape = RoundedCornerShape(12.dp),
-        modifier = Modifier.fillMaxWidth()
+private fun AchievementItem(
+    icon: String,
+    title: String,
+    description: String,
+    unlocked: Boolean,
+    progress: String? = null
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(
+                    if (unlocked) Color(0xFFFFD700) else Color(0xFFE0E0E0)
+                ),
+            contentAlignment = Alignment.Center
         ) {
-            // Trail Image
-            Box(
-                modifier = Modifier
-                    .size(60.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFFE8F5E9)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.PhotoLibrary,
-                    contentDescription = null,
-                    tint = Color(0xFF4CAF50),
-                    modifier = Modifier.size(28.dp)
-                )
-            }
+            Text(
+                text = icon,
+                fontSize = 24.sp
+            )
+        }
 
-            Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(16.dp))
 
-            Column(modifier = Modifier.weight(1f)) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = if (unlocked) Color(0xFF212121) else Color(0xFF9E9E9E)
+            )
+            Text(
+                text = description,
+                fontSize = 13.sp,
+                color = Color(0xFF757575)
+            )
+            if (progress != null) {
                 Text(
-                    text = trail.name,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF212121)
+                    text = progress,
+                    fontSize = 12.sp,
+                    color = Color(0xFF4CAF50),
+                    fontWeight = FontWeight.Medium
                 )
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Surface(
-                        color = Color(0xFF2196F3),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text(
-                            text = trail.distance,
-                            fontSize = 11.sp,
-                            color = Color.White,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
-
-                    Surface(
-                        color = Color(0xFF4CAF50).copy(alpha = 0.2f),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text(
-                            text = trail.difficulty,
-                            fontSize = 11.sp,
-                            color = Color(0xFF4CAF50),
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
-                }
             }
         }
+
+        if (unlocked) {
+            Icon(
+                Icons.Default.CheckCircle,
+                null,
+                tint = Color(0xFF4CAF50),
+                modifier = Modifier.size(24.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun OfflineTrailItem(
+    name: String,
+    size: String,
+    date: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            Icons.Default.CloudDone,
+            null,
+            tint = Color(0xFF4CAF50),
+            modifier = Modifier.size(32.dp)
+        )
+
+        Spacer(Modifier.width(12.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = name,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF212121)
+            )
+            Text(
+                text = "$size • $date",
+                fontSize = 12.sp,
+                color = Color(0xFF757575)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Settings",
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                SettingItem(
+                    icon = Icons.Default.Notifications,
+                    title = "Notifications",
+                    onClick = { }
+                )
+                SettingItem(
+                    icon = Icons.Default.Lock,
+                    title = "Privacy",
+                    onClick = { }
+                )
+                SettingItem(
+                    icon = Icons.Default.Language,
+                    title = "Language",
+                    onClick = { }
+                )
+                SettingItem(
+                    icon = Icons.Default.Info,
+                    title = "About",
+                    onClick = { }
+                )
+                HorizontalDivider()
+                SettingItem(
+                    icon = Icons.Default.ExitToApp,
+                    title = "Logout",
+                    color = Color(0xFFD32F2F),
+                    onClick = { }
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close", color = Color(0xFF4CAF50))
+            }
+        }
+    )
+}
+
+@Composable
+private fun SettingItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    color: Color = Color(0xFF212121),
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            icon,
+            null,
+            tint = color,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(Modifier.width(16.dp))
+        Text(
+            text = title,
+            fontSize = 16.sp,
+            color = color
+        )
+    }
+}
+
+@Composable
+private fun NavItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .padding(8.dp)
+    ) {
+        Icon(
+            icon,
+            contentDescription = label,
+            tint = if (isSelected) Color(0xFF4CAF50) else Color(0xFF9E9E9E),
+            modifier = Modifier.size(24.dp)
+        )
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            color = if (isSelected) Color(0xFF4CAF50) else Color(0xFF9E9E9E)
+        )
     }
 }
