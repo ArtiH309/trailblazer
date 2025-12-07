@@ -1,24 +1,10 @@
 import com.android.build.gradle.internal.cxx.configure.gradleLocalProperties
 
-android.buildFeatures.buildConfig = true
-
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
-}
-
-android {
-    defaultConfig {
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    }
-}
-
-dependencies {
-    testImplementation("junit:junit:4.13.2")
-    androidTestImplementation("androidx.test.ext:junit:1.1.5")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
 }
 
 android {
@@ -32,7 +18,9 @@ android {
         versionCode = 1
         versionName = "1.0"
 
-        // Read local.properties (Kotlin DSL needs the 'providers' arg)
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Read local.properties
         val props = gradleLocalProperties(rootDir, providers)
 
         // API base -> BuildConfig.BASE_URL
@@ -43,18 +31,27 @@ android {
         manifestPlaceholders["MAPS_API_KEY"] = props.getProperty("MAPS_API_KEY") ?: ""
     }
 
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+        }
+        debug {
+            isMinifyEnabled = false
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    buildFeatures { compose = true }
-    buildTypes {
-        release { isMinifyEnabled = false }
-        debug { isMinifyEnabled = false }
-    }
     kotlinOptions {
         jvmTarget = "17"
+    }
+
+    buildFeatures {
+        compose = true
+        buildConfig = true
     }
 }
 
@@ -66,14 +63,14 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
 
-    // ⭐ MATERIAL ICONS EXTENDED - THIS IS THE FIX ⭐
+    // Material icons extended
     implementation("androidx.compose.material:material-icons-extended:1.7.5")
 
     implementation(libs.core.ktx)
     debugImplementation("androidx.compose.ui:ui-tooling")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
 
-    // Material Components (View system) for manifest theme
+    // Material Components (for app theme in manifest)
     implementation("com.google.android.material:material:1.12.0")
 
     // Google Maps
@@ -82,6 +79,7 @@ dependencies {
 
     // Retrofit + OkHttp + JSON
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")          // <- for GsonConverterFactory
     implementation("com.squareup.retrofit2:converter-moshi:2.11.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
@@ -94,4 +92,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.6")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+
+    // Testing
+    testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
 }

@@ -1,4 +1,4 @@
-// FILE: app/src/main/java/com/example/trailblazer/ui/screens/HomeMapScreen.kt
+// FILE: android/app/src/main/java/com/example/trailblazer/ui/screens/HomeMapScreen.kt
 package com.example.trailblazer.ui.screens
 
 import android.annotation.SuppressLint
@@ -32,23 +32,26 @@ import com.example.trailblazer.ui.rememberMapViewWithLifecycle
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 
 @SuppressLint("MissingPermission")
 @Composable
 fun HomeMapScreen(
     vm: TrailMapViewModel = viewModel(),
-    onTrailClick: (Int) -> Unit,
-    onNavigateToScreen: (String) -> Unit,
+    onTrailClick: (Int) -> Unit = {},
+    onNavigateToScreen: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val state by vm.ui.collectAsState()
     val mapView = rememberMapViewWithLifecycle()
     var googleMap by remember { mutableStateOf<GoogleMap?>(null) }
-    var searchQuery by remember { mutableStateOf("") }
+
+    // Store trail ID -> Marker mapping
+    val markerToTrailId = remember { mutableMapOf<Marker, Int>() }
 
     Box(modifier = modifier.fillMaxSize()) {
-        // Map Background
+        // Google Map
         AndroidView(
             factory = {
                 mapView.apply {
@@ -58,10 +61,21 @@ fun HomeMapScreen(
                         gMap.uiSettings.isMapToolbarEnabled = false
                         try { gMap.isMyLocationEnabled = true } catch (_: SecurityException) {}
 
-                        // Initial camera position (NYC)
+                        // Initial camera position (NYC/NJ area)
                         gMap.moveCamera(
                             CameraUpdateFactory.newLatLngZoom(LatLng(40.7128, -74.0060), 11f)
                         )
+
+                        // Set marker click listener
+                        gMap.setOnMarkerClickListener { marker ->
+                            val trailId = markerToTrailId[marker]
+                            if (trailId != null) {
+                                onTrailClick(trailId)
+                                true // Consume the event
+                            } else {
+                                false
+                            }
+                        }
                     }
                 }
             },
@@ -70,12 +84,18 @@ fun HomeMapScreen(
                 when (val ui = state) {
                     is TrailUiState.Ready -> {
                         gMap.clear()
+                        markerToTrailId.clear()
+
                         ui.trails.forEach { pin ->
-                            gMap.addMarker(
+                            val marker = gMap.addMarker(
                                 MarkerOptions()
                                     .position(LatLng(pin.lat, pin.lng))
                                     .title(pin.name)
                             )
+                            // Store the trail ID for this marker
+                            if (marker != null) {
+                                markerToTrailId[marker] = pin.id.toInt()
+                            }
                         }
                     }
                     else -> Unit
@@ -94,17 +114,17 @@ fun HomeMapScreen(
         ) {
             Text(
                 text = "Home/Map",
-                fontSize = 16.sp,
-                color = Color(0xFF757575),
-                fontWeight = FontWeight.Medium
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF212121)
             )
 
             Spacer(Modifier.height(12.dp))
 
             // Search Bar
             OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
+                value = "",
+                onValueChange = {},
                 placeholder = { Text("Search trails...") },
                 leadingIcon = {
                     Icon(Icons.Default.Search, null, tint = Color(0xFF757575))
@@ -172,7 +192,7 @@ fun HomeMapScreen(
                                     color = Color(0xFF212121)
                                 )
                                 Text(
-                                    text = "3.2 miles • Moderate",
+                                    text = "Tap to view details",
                                     fontSize = 13.sp,
                                     color = Color(0xFF757575)
                                 )
@@ -197,67 +217,56 @@ fun HomeMapScreen(
         }
 
         // Bottom Navigation Bar
-        BottomNavigationBar(
-            currentScreen = "Map",
-            onNavigate = onNavigateToScreen,
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
-    }
-}
-
-@Composable
-fun BottomNavigationBar(
-    currentScreen: String,
-    onNavigate: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        color = Color.White,
-        shadowElevation = 8.dp
-    ) {
-        Row(
+        Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
+                .align(Alignment.BottomCenter),
+            color = Color.White,
+            shadowElevation = 8.dp
         ) {
-            BottomNavItem(
-                icon = Icons.Default.LocationOn,
-                label = "Map",
-                isSelected = currentScreen == "Map",
-                onClick = { onNavigate("Map") }
-            )
-            BottomNavItem(
-                icon = Icons.Default.Group,
-                label = "Community",
-                isSelected = currentScreen == "Community",
-                onClick = { onNavigate("Community") }
-            )
-            BottomNavItem(
-                icon = Icons.Default.Person,
-                label = "Profile",
-                isSelected = currentScreen == "Profile",
-                onClick = { onNavigate("Profile") }
-            )
-            BottomNavItem(
-                icon = Icons.Default.BarChart,
-                label = "Progress",
-                isSelected = currentScreen == "Progress",
-                onClick = { onNavigate("Progress") }
-            )
-            BottomNavItem(
-                icon = Icons.Default.CloudDownload,
-                label = "Offline",
-                isSelected = currentScreen == "Offline",
-                onClick = { onNavigate("Offline") }
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                NavItem(
+                    icon = Icons.Default.LocationOn,
+                    label = "Map",
+                    isSelected = true,
+                    onClick = { onNavigateToScreen("Map") }
+                )
+                NavItem(
+                    icon = Icons.Default.Group,
+                    label = "Community",
+                    isSelected = false,
+                    onClick = { onNavigateToScreen("Community") }
+                )
+                NavItem(
+                    icon = Icons.Default.Person,
+                    label = "Profile",
+                    isSelected = false,
+                    onClick = { onNavigateToScreen("Profile") }
+                )
+                NavItem(
+                    icon = Icons.Default.BarChart,
+                    label = "Progress",
+                    isSelected = false,
+                    onClick = { onNavigateToScreen("Progress") }
+                )
+                NavItem(
+                    icon = Icons.Default.CloudDownload,
+                    label = "Offline",
+                    isSelected = false,
+                    onClick = { onNavigateToScreen("Offline") }
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun BottomNavItem(
+private fun NavItem(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     isSelected: Boolean,
@@ -265,20 +274,20 @@ private fun BottomNavItem(
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable { onClick() }
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .padding(8.dp)
     ) {
         Icon(
-            imageVector = icon,
+            icon,
             contentDescription = label,
             tint = if (isSelected) Color(0xFF4CAF50) else Color(0xFF9E9E9E),
             modifier = Modifier.size(24.dp)
         )
-        Spacer(Modifier.height(4.dp))
         Text(
             text = label,
-            fontSize = 11.sp,
-            color = if (isSelected) Color(0xFF4CAF50) else Color(0xFF9E9E9E),
-            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+            fontSize = 12.sp,
+            color = if (isSelected) Color(0xFF4CAF50) else Color(0xFF9E9E9E)
         )
     }
 }
