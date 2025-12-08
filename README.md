@@ -67,12 +67,27 @@ Offline:
 ##  **User Guide:**
 
 Installation and Setup:
-1. (fill in details yall need to do this part just be specific for every part of the setup like getting her own api not ours, setting up database, apk, android studio, etc however you guys did it for the demos)
+
+Prerequisites:
+1. First, have either an Android device running Android 7.0 (API 24) or higher, OR Android Studio for emulation
+2. A Google Account (Gmail)
+3. An Internet connection
+
+Setting Up Environment:
+1. Install Android Studio from developer.android.com, with default settings
+2. Open it and run the setup wizard
+3. Install Android SDK Platform 34 (Android 14) through SDK Manager
+
+Installing the App:
+1. Install the given APK file
+2. On your Android device, enable "Install from Unknown Sources" or "Allow from this source."
+3. In the Downloads or Files, click on the Trailblazer APK, and click install to begin installation, then open to launch the app
+
 
 Getting Started:
 After downloading and setting up the application, the user takes these steps:
 1. Click Sign-Up to create an account
-2. Enter a Username (Ex. JohnHikes23), Email Address, and Strong Password (Ex. Password123!)
+2. Enter a Username (Ex, JohnHikes23), Email Address, and Strong Password (Ex, Password123!)
 3. If the account already exists, sign in with Email and Password
 
 Exploring the App:
@@ -101,7 +116,8 @@ The user should be able to go into their account settings in the Profile tab, hi
 
 Target Devices:
 - Android: Android SDK 33 (Android 14)
-- IOS: (minimum IOS device here)
+
+
 
 Required Software and Packages:
 - list all the stuff you need to have downloaded here
@@ -131,8 +147,81 @@ Required Software and Packages:
 ---
 ## **Packages and APIs:**
 
-Packages: 
-- list all packages we used, where they are
+**Packages:**
+
+Backend Packages:
+
+- FastAPI (0.115.2) for a modern, high-performance web framework for building APIs with automatic API documentation.
+  - Why: Automatic OpenAPI (Swagger) documentation, built-in data validation with Pydantic, async support for better performance, type hints for better code quality, easy dependency injection system
+  - Used: Path operations (GET, POST, PATCH, DELETE), dependency injection for database sessions and authentication, request/response models with Pydantic, automatic JSON serialization
+  - Sample Endpoint:
+    ```python
+    @router.post("/trails/{trail_id}/reviews", response_model=schemas.MsgOut)
+     def add_review(
+    trail_id: int,
+    payload: schemas.ReviewCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user), ):
+    # Implementation
+
+- SQLAlchemy (2.0.36) for an SQL toolkit and Object-Relational Mapping (ORM) library.
+  - Why: Type-safe ORM with Python 3.10+ syntax, Support for multiple database backends, Efficient query optimization, Relationship handling between tables, Migration support with Alembic
+  - Sample:
+    ```python
+    class Trail(Base):
+    __tablename__ = "trails"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String, index=True)
+    reviews: Mapped[list["Review"]] = relationship(
+        back_populates="trail",
+        cascade="all, delete-orphan"
+    )
+
+- Pydantic (2.9.2) for data validation using Python type annotations.
+  - Why: Automatic validation of request/response data, Type coercion and conversion, Clear error messages for invalid data, JSON Schema generation, Fast performance with Rust backend
+    - Sample:
+      ```python
+      class TrailOut(BaseModel):
+      id: int
+      name: str
+      difficulty: str
+      length_km: Optional[float] = None
+      lat: Optional[float] = None
+      lon: Optional[float] = None
+      
+      class Config:
+        from_attributes = True
+
+
+- Passlib (1.7.4) for a password hashing library with support for multiple algorithms.
+  - Why: Secure password hashing with PBKDF2-SHA256, Configurable iteration counts, Automatic salt generation, Future-proof with algorithm migration support
+  - Implementation:
+    ```python
+    pwd_context = CryptContext(
+       schemes=["pbkdf2_sha256"],
+       deprecated="auto"
+    )
+   
+    hashed = pwd_context.hash("password123")
+    verified = pwd_context.verify("password123", hashed)
+
+
+- PyJWT (2.9.0) for JSON Web Token implementation for Python.
+  - Why: Standard JWT format for stateless authentication, Cryptographic signing for token integrity, Expiration handling, Support for multiple algorithms (HS256, RS256)
+  - Token Generation:
+    ```python
+    payload = {
+       "sub": str(user_id),
+       "iat": int(now.timestamp()),
+       "exp": int(exp.timestamp()),
+    }
+    token = jwt.encode(payload, SECRET, algorithm="HS256")
+
+
+Frontend Packages:
+
+
+
 
 APIs: 
 - APIs we used, where they are, and example calls
