@@ -77,12 +77,51 @@ Setting Up Environment:
 1. Install Android Studio from developer.android.com, with default settings
 2. Open it and run the setup wizard
 3. Install Android SDK Platform 34 (Android 14) through SDK Manager
+4. Configure API Keys:
+   - Create a local.properties file in the android/ directory
+   - Add your Google Maps API key:
+     ```properties
+     MAPS_API_KEY=your_google_maps_api_key_here
+     API_BASE_URL=http://10.0.2.2:8000
+     
+   - To get a Google Maps API key: Go to Google Cloud Console
+     - Create a new project or select an existing one
+     - Enable "Maps SDK for Android"
+     - Create credentials → API Key
+     - Restrict the key to Android apps for security
+   
+   - Set Up Backend:
+     - Install Python 3.9 or higher
+     - Create a virtual environment:
+       ```bash
+       python -m venv .venv
+       source .venv/bin/activate  # IF USING WINDOWS: .venv\Scripts\activate
+
+     - Install dependencies:
+       ```bash
+       pip install -r requirements.txt
+
+     - Create an .env file and add the necessary keys (To get an NPS API key, visit https://www.nps.gov/subjects/developer/get-started.htm) :
+       ```env 
+        JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+        NPS_API_KEY=your_nps_api_key_here 
+        DATABASE_URL=sqlite:///./trailblazer.db
+
+5. Initialize Database:
+   ```bash
+   python populate_database.py
+   python nj_trails.py
+   python metro_trails.py
+
+6. Start Backend Server:
+   ```bash
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
 
 Installing the App:
 1. Install the given APK file
 2. On your Android device, enable "Install from Unknown Sources" or "Allow from this source."
 3. In the Downloads or Files, click on the Trailblazer APK, and click install to begin installation, then open to launch the app
-
 
 Getting Started:
 After downloading and setting up the application, the user takes these steps:
@@ -116,7 +155,6 @@ The user should be able to go into their account settings in the Profile tab, hi
 
 Target Devices:
 - Android: Android SDK 33 (Android 14)
-
 
 
 Required Software and Packages:
@@ -290,7 +328,7 @@ Frontend Packages:
        }
     }
 
-APIs: 
+**APIs:** 
 - External APIs
   
 - National Parks Service (NPS) API: for importing official park and trail data from the US National Park Service.
@@ -361,7 +399,7 @@ APIs:
         "status": "OK"
       }
 
-
+---
 
 --------------------------------------------------------------------------------------------------------------------------
 this section below will be deleted after app and readme is done
