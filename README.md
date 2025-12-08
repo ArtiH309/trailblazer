@@ -291,7 +291,77 @@ Frontend Packages:
     }
 
 APIs: 
-- APIs we used, where they are, and example calls
+- External APIs
+  
+- National Parks Service (NPS) API: for importing official park and trail data from the US National Park Service.
+  - Authentication: API key required
+  - Why: Official park data, Comprehensive information (descriptions, activities, amenities), Regular updates from NPS, Free to use with attribution, Covers all US states and territories
+  - Endpoints Used: Getting parks by state: GET /parks?stateCode=NY&limit=500&api_key=YOUR_KEY
+  - Parameters: stateCode (string): Two-letter state code (e.g., "NY", "CA"), limit (integer): Max number of results (default: 50, max: 500), api_key (string): Your NPS API key
+  - Response:
+    ```json
+       {
+        "data": [
+          {
+            "id": "77E0D7F0-1942-494A-ACE2-9004D2BDC59E",
+            "name": "African Burial Ground",
+            "latitude": "40.71452681",
+            "longitude": "-74.00447358",
+            "states": "NY",
+            "description": "...",
+            "activities": [...],
+            "topics": [...],
+            "contacts": {...}
+          }
+        ],
+        "total": "32"
+      }
+  - Sample:
+    ```python
+    # app/services/nps.py
+      def import_parks_by_states(db: Session, state_code: str, limit: int = 500):
+          params = {
+           "stateCode": state_code.upper(),
+           "limit": limit,
+           "api_key": settings.NPS_API_KEY
+          }
+    
+       response = client.get(
+           "https://developer.nps.gov/api/v1/parks",
+           params=params
+       )
+       data = response.json().get("data", [])
+       
+       for item in data:
+           park = Park(
+               nps_id=item.get("id"),
+               name=item.get("name"),
+               state=state_code.upper(),
+               lat=float(item["latitude"]),
+               lon=float(item["longitude"])
+           )
+           db.add(park)
+
+
+
+- Google Maps API: for displaying interactive maps, geocoding, and location services.
+  - Authentication: API key required
+  - Services Used: Maps SDK for Android: Interactive map display, Custom markers and info windows, User location tracking, Camera animations, Map styling
+  - Response:
+    ```{
+        "results": [{
+          "formatted_address": "1600 Amphitheatre Parkway, Mountain View, CA",
+          "geometry": {
+            "location": {
+              "lat": 37.4224764,
+              "lng": -122.0842499
+            }
+          }
+        }],
+        "status": "OK"
+      }
+
+
 
 --------------------------------------------------------------------------------------------------------------------------
 this section below will be deleted after app and readme is done
