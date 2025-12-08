@@ -220,8 +220,75 @@ Backend Packages:
 
 Frontend Packages:
 
+- Jetpack Compose (BOM 2024.10.01) for a modern Android UI toolkit using declarative programming
+  - Why: Declarative UI reduces boilerplate code, Built-in Material Design 3 components, Reactive state management, Better performance than XML layouts, Easier testing and preview
+  - Sample:
+    ```kotlin
+    @Composable
+    fun TrailCard(trail: Trail) {
+       Card(
+           modifier = Modifier.fillMaxWidth(),
+           elevation = CardDefaults.cardElevation(4.dp)
+       ) {
+           Column(modifier = Modifier.padding(16.dp)) {
+               Text(trail.name, style = MaterialTheme.typography.titleLarge)
+               Text("${trail.distance} mi", style = MaterialTheme.typography.bodyMedium)
+           }
+       }
+    }
 
+- Retrofit (2.11.0) for a type-safe HTTP client for Android
+  - Why: Clean API definition with annotations, Automatic JSON conversion, Built-in error handling, Support for synchronous and asynchronous calls, Easy integration with Coroutines
+  - Sample:
+    ```kotlin
+    interface ApiService {
+       @GET("trails/")
+       suspend fun getTrailsNearby(
+           @Query("near") near: String,
+           @Query("radius") radiusKm: Double = 50.0
+       ): List<TrailDto>
+    
+       @POST("auth/login")
+       suspend fun login(@Body body: LoginRequest): AuthResponse
+    }
 
+- OkHttp (4.12.0) for HTTP client for networking operations
+  - Why: Connection pooling for efficiency, Transparent GZIP compression, Response caching, Interceptors for authentication, Robust error handling
+  - Sample:
+    ```kotlin
+    OkHttpClient.Builder()
+    .addInterceptor { chain ->
+        val original = chain.request()
+        val token = AuthStore.token
+        val req = if (token != null) {
+            original.newBuilder()
+                .addHeader("Authorization", "Bearer $token")
+                .build()
+        } else original
+        chain.proceed(req)
+    }
+    .build()
+
+- Google Maps SDK (19.0.0) for embedding Google Maps in Android applications
+  - Why: Industry-standard mapping solution, Accurate location services, Rich features like markers, polylines, and custom styling, Offline map support, Regular updates and maintenance
+  - Sample:
+    ```xml
+    <meta-data
+       android:name="com.google.android.geo.API_KEY"
+       android:value="${MAPS_API_KEY}" />
+
+- Kotlin Coroutines (1.8.1) for asynchronous programming in Kotlin
+  - Why: Simpler than callbacks or RxJava, Built-in cancellation support, Structured concurrency, Exception handling, Integration with Android lifecycle
+  - Sample:
+    ```kotlin
+    viewModelScope.launch {
+       try {
+           val trails = ApiClient.service.getTrailsNearby(near, radius)
+           _uiState.value = UiState.Success(trails)
+       } catch (e: Exception) {
+           _uiState.value = UiState.Error(e.message)
+       }
+    }
 
 APIs: 
 - APIs we used, where they are, and example calls
