@@ -15,10 +15,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.trailblazer.net.ApiClient
+import com.example.trailblazer.net.AuthStore
 import com.example.trailblazer.net.ProfileDto
 import kotlinx.coroutines.launch
 
@@ -31,6 +33,7 @@ fun ProfileScreen(
     var profile by remember { mutableStateOf<ProfileDto?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var showSettings by remember { mutableStateOf(false) }
+    var showLogoutConfirm by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
 
@@ -39,7 +42,7 @@ fun ProfileScreen(
         try {
             profile = ApiClient.service.getMyProfile()
         } catch (e: Exception) {
-            // Handle error - profile stays null
+            // Handle error
         } finally {
             isLoading = false
         }
@@ -109,7 +112,6 @@ fun ProfileScreen(
                                     .padding(24.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                // Avatar
                                 Box(
                                     modifier = Modifier
                                         .size(100.dp)
@@ -257,69 +259,6 @@ fun ProfileScreen(
                                     unlocked = false,
                                     progress = String.format("%.1f/100 miles", (profile?.totalDistanceKm ?: 0.0) * 0.621371)
                                 )
-                                AchievementItem(
-                                    icon = "📸",
-                                    title = "Photographer",
-                                    description = "Upload 50 trail photos",
-                                    unlocked = false,
-                                    progress = "0/50 photos"
-                                )
-                                AchievementItem(
-                                    icon = "👥",
-                                    title = "Social Butterfly",
-                                    description = "Make 20 community posts",
-                                    unlocked = false,
-                                    progress = "0/20 posts"
-                                )
-                            }
-                        }
-                    }
-
-                    // Offline Trails
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Offline Maps",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF212121)
-                            )
-                            TextButton(onClick = { onNavigate("Offline") }) {
-                                Text("View All", color = Color(0xFF4CAF50))
-                            }
-                        }
-                    }
-
-                    item {
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                OfflineTrailItem(
-                                    name = "North Woods Trail",
-                                    size = "4.2 MB",
-                                    date = "Downloaded 2 days ago"
-                                )
-                                OfflineTrailItem(
-                                    name = "Lake Loop Trail",
-                                    size = "5.8 MB",
-                                    date = "Downloaded 1 week ago"
-                                )
-                                OfflineTrailItem(
-                                    name = "Ramble Trail",
-                                    size = "3.5 MB",
-                                    date = "Downloaded 2 weeks ago"
-                                )
                             }
                         }
                     }
@@ -371,16 +310,53 @@ fun ProfileScreen(
             }
         }
 
-        // Settings Dialog
+        // Settings Dialog - WITH WORKING BUTTONS
         if (showSettings) {
-            SettingsDialog(onDismiss = { showSettings = false })
+            SettingsDialog(
+                onDismiss = { showSettings = false },
+                onLogout = { showLogoutConfirm = true }
+            )
+        }
+
+        // Logout Confirmation Dialog
+        if (showLogoutConfirm) {
+            AlertDialog(
+                onDismissRequest = { showLogoutConfirm = false },
+                title = {
+                    Text("Logout", fontWeight = FontWeight.Bold)
+                },
+                text = {
+                    Text("Are you sure you want to logout?")
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            // Clear auth token
+                            AuthStore.token = null
+
+                            showLogoutConfirm = false
+                            showSettings = false
+
+                            // Navigate to login
+                            onNavigate("Login")
+                        }
+                    ) {
+                        Text("Logout", color = Color(0xFFD32F2F))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showLogoutConfirm = false }) {
+                        Text("Cancel", color = Color(0xFF757575))
+                    }
+                }
+            )
         }
     }
 }
 
 @Composable
 private fun StatItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     value: String,
     label: String,
     color: Color
@@ -472,42 +448,10 @@ private fun AchievementItem(
 }
 
 @Composable
-private fun OfflineTrailItem(
-    name: String,
-    size: String,
-    date: String
+private fun SettingsDialog(
+    onDismiss: () -> Unit,
+    onLogout: () -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            Icons.Default.CloudDone,
-            null,
-            tint = Color(0xFF4CAF50),
-            modifier = Modifier.size(32.dp)
-        )
-
-        Spacer(Modifier.width(12.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = name,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color(0xFF212121)
-            )
-            Text(
-                text = "$size • $date",
-                fontSize = 12.sp,
-                color = Color(0xFF757575)
-            )
-        }
-    }
-}
-
-@Composable
-private fun SettingsDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -523,29 +467,29 @@ private fun SettingsDialog(onDismiss: () -> Unit) {
                 SettingItem(
                     icon = Icons.Default.Notifications,
                     title = "Notifications",
-                    onClick = { }
+                    onClick = { /* TODO: Implement notifications settings */ }
                 )
                 SettingItem(
                     icon = Icons.Default.Lock,
                     title = "Privacy",
-                    onClick = { }
+                    onClick = { /* TODO: Implement privacy settings */ }
                 )
                 SettingItem(
                     icon = Icons.Default.Language,
                     title = "Language",
-                    onClick = { }
+                    onClick = { /* TODO: Implement language settings */ }
                 )
                 SettingItem(
                     icon = Icons.Default.Info,
                     title = "About",
-                    onClick = { }
+                    onClick = { /* TODO: Implement about screen */ }
                 )
                 HorizontalDivider()
                 SettingItem(
                     icon = Icons.Default.ExitToApp,
                     title = "Logout",
                     color = Color(0xFFD32F2F),
-                    onClick = { }
+                    onClick = onLogout
                 )
             }
         },
@@ -559,7 +503,7 @@ private fun SettingsDialog(onDismiss: () -> Unit) {
 
 @Composable
 private fun SettingItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     title: String,
     color: Color = Color(0xFF212121),
     onClick: () -> Unit
@@ -588,7 +532,7 @@ private fun SettingItem(
 
 @Composable
 private fun NavItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     label: String,
     isSelected: Boolean,
     onClick: () -> Unit

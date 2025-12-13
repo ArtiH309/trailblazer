@@ -8,6 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,6 +30,17 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+private fun screenFromName(name: String): Screen = when (name) {
+    "Login" -> Screen.Login
+    "Register" -> Screen.Register
+    "Map" -> Screen.Map
+    "Community" -> Screen.Community
+    "Profile" -> Screen.Profile
+    "Progress" -> Screen.Progress
+    "Offline" -> Screen.Offline
+    else -> Screen.Map
+}
+
 sealed class Screen {
     object Login : Screen()
     object Register : Screen()
@@ -44,6 +56,17 @@ sealed class Screen {
 @Composable
 fun AppNavigation() {
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Login) }
+
+    val mapVm: com.example.trailblazer.ui.TrailMapViewModel =
+        androidx.lifecycle.viewmodel.compose.viewModel()
+
+    LaunchedEffect(com.example.trailblazer.net.AuthStore.token) {
+        val token = com.example.trailblazer.net.AuthStore.token
+        val isAuthScreen = currentScreen is Screen.Login || currentScreen is Screen.Register
+        if (token == null && !isAuthScreen) {
+            currentScreen = Screen.Login
+        }
+    }
 
     when (val screen = currentScreen) {
         is Screen.Login -> LoginScreen(
@@ -72,45 +95,25 @@ fun AppNavigation() {
         )
 
         is Screen.Map -> HomeMapScreen(
+            vm = mapVm,
             onTrailClick = { trailId ->
                 println("Trail clicked: $trailId")
                 currentScreen = Screen.TrailDetail(trailId)
             },
             onNavigateToScreen = { screenName ->
-                currentScreen = when (screenName) {
-                    "Map" -> Screen.Map
-                    "Community" -> Screen.Community
-                    "Profile" -> Screen.Profile
-                    "Progress" -> Screen.Progress
-                    "Offline" -> Screen.Offline
-                    else -> Screen.Map
-                }
+                 currentScreen = screenFromName(screenName)
             }
         )
 
         is Screen.Community -> CommunityScreen(
             onNavigate = { screenName ->
-                currentScreen = when (screenName) {
-                    "Map" -> Screen.Map
-                    "Community" -> Screen.Community
-                    "Profile" -> Screen.Profile
-                    "Progress" -> Screen.Progress
-                    "Offline" -> Screen.Offline
-                    else -> Screen.Community
-                }
+                currentScreen = screenFromName(screenName)
             }
         )
 
         is Screen.Profile -> ProfileScreen(
             onNavigate = { screenName ->
-                currentScreen = when (screenName) {
-                    "Map" -> Screen.Map
-                    "Community" -> Screen.Community
-                    "Profile" -> Screen.Profile
-                    "Progress" -> Screen.Progress
-                    "Offline" -> Screen.Offline
-                    else -> Screen.Profile
-                }
+                currentScreen = screenFromName(screenName)
             },
             onEditProfile = {
                 currentScreen = Screen.EditProfile
@@ -119,33 +122,20 @@ fun AppNavigation() {
 
         is Screen.Progress -> ProgressScreen(
             onNavigate = { screenName ->
-                currentScreen = when (screenName) {
-                    "Map" -> Screen.Map
-                    "Community" -> Screen.Community
-                    "Profile" -> Screen.Profile
-                    "Progress" -> Screen.Progress
-                    "Offline" -> Screen.Offline
-                    else -> Screen.Progress
-                }
+                currentScreen = screenFromName(screenName)
             }
         )
 
         is Screen.Offline -> OfflineScreen(
             onNavigate = { screenName ->
-                currentScreen = when (screenName) {
-                    "Map" -> Screen.Map
-                    "Community" -> Screen.Community
-                    "Profile" -> Screen.Profile
-                    "Progress" -> Screen.Progress
-                    "Offline" -> Screen.Offline
-                    else -> Screen.Offline
-                }
+                currentScreen = screenFromName(screenName)
             }
         )
 
         is Screen.TrailDetail -> TrailDetailScreen(
             trailId = screen.trailId,
             onBack = {
+                mapVm.clearSearch()
                 currentScreen = Screen.Map
             }
         )

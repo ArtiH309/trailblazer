@@ -11,8 +11,15 @@ data class TrailDto(
     val difficulty: String?,
     @SerialName("length_km") val lengthKm: Double?,
     @SerialName("elevation_gain_m") val elevationGainM: Double?,
+
+    // accept multiple possible field names
     val lat: Double? = null,
-    @SerialName("lon") val lng: Double? = null, // map 'lon' from API -> 'lng' for UI
+    @SerialName("latitude") val latitude: Double? = null,
+
+    @SerialName("lon") val lng: Double? = null,
+    @SerialName("lng") val lngAlt: Double? = null,
+    @SerialName("longitude") val longitude: Double? = null,
+
     val accessible: Boolean?,
     @SerialName("has_waterfall") val hasWaterfall: Boolean?,
     @SerialName("has_viewpoint") val hasViewpoint: Boolean?,

@@ -13,9 +13,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.trailblazer.net.ActivityCreateRequest
 import com.example.trailblazer.net.ApiClient
 import com.example.trailblazer.net.TrailDto
 import kotlinx.coroutines.launch
@@ -29,32 +31,25 @@ fun TrailDetailScreen(
     var trail by remember { mutableStateOf<TrailDto?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var successMessage by remember { mutableStateOf<String?>(null) }
     var isFavorite by remember { mutableStateOf(false) }
     var isOffline by remember { mutableStateOf(false) }
+    var isLoggingActivity by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
 
+    // Load trail data from API
     LaunchedEffect(trailId) {
         isLoading = true
         try {
-            // In a real app, you'd fetch trail details
-            // For now, we'll create a mock trail
-            trail = TrailDto(
-                id = trailId,
-                name = "Trail #$trailId",
-                difficulty = "Moderate",
-                lengthKm = 3.2,
-                elevationGainM = 150.0,
-                lat = 40.7829,
-                lng = -73.9654,
-                accessible = true,
-                hasWaterfall = false,
-                hasViewpoint = true,
-                avgRating = 4.5,
-                ratingsCount = 120
-            )
+            trail = ApiClient.service.getTrailsNearby("40.7128,-74.0060", 200.0)
+                .find { it.id == trailId }
+
+            if (trail == null) {
+                errorMessage = "Trail not found"
+            }
         } catch (e: Exception) {
-            errorMessage = e.message
+            errorMessage = e.message ?: "Failed to load trail"
         } finally {
             isLoading = false
         }
@@ -169,6 +164,9 @@ fun TrailDetailScreen(
                             if (trail!!.hasViewpoint == true) {
                                 Chip("Viewpoint")
                             }
+                            if (trail!!.hasWaterfall == true) {
+                                Chip("Waterfall")
+                            }
                         }
                     }
                 }
@@ -186,36 +184,76 @@ fun TrailDetailScreen(
                     ) {
                         StatItem(
                             icon = Icons.Default.Terrain,
-                            value = "${((trail!!.lengthKm ?: 0.0) * 0.621371).toInt()} mi",
+                            value = String.format("%.1f mi", (trail!!.lengthKm ?: 0.0) * 0.621371),
                             label = "Distance"
                         )
                         StatItem(
                             icon = Icons.Default.Landscape,
-                            value = "${trail!!.elevationGainM?.toInt() ?: 0} ft",
+                            value = String.format("%.0f ft", (trail!!.elevationGainM ?: 0.0) * 3.28084),
                             label = "Elevation"
                         )
                         StatItem(
                             icon = Icons.Default.Star,
-                            value = String.format("%.1f", trail!!.avgRating),
+                            value = String.format("%.1f", trail!!.avgRating ?: 0.0),
                             label = "Rating"
                         )
                     }
                 }
 
-                // Action Buttons
+                // Success/Error Messages
+                if (successMessage != null) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFE8F5E9)
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = "✅ $successMessage",
+                            color = Color(0xFF4CAF50),
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
+                }
+
+                if (errorMessage != null) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFFFEBEE)
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = "❌ $errorMessage",
+                            color = Color(0xFFD32F2F),
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
+                }
+
+                // Action Button - WORKING LOG ACTIVITY
                 Button(
                     onClick = {
                         scope.launch {
+                            isLoggingActivity = true
+                            errorMessage = null
+                            successMessage = null
                             try {
                                 ApiClient.service.logActivity(
                                     trailId = trailId,
-                                    body = com.example.trailblazer.net.ActivityCreateRequest(
+                                    body = ActivityCreateRequest(
                                         distanceKm = trail!!.lengthKm,
-                                        durationMinutes = 120.0
+                                        durationMinutes = 120.0,
+                                        elevationGainM = trail!!.elevationGainM
                                     )
                                 )
+                                successMessage = "Activity logged successfully!"
                             } catch (e: Exception) {
-                                errorMessage = e.message
+                                errorMessage = e.message ?: "Failed to log activity"
+                            } finally {
+                                isLoggingActivity = false
                             }
                         }
                     },
@@ -223,19 +261,47 @@ fun TrailDetailScreen(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFF4CAF50)
                     ),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = !isLoggingActivity
                 ) {
-                    Icon(Icons.Default.DirectionsWalk, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Log Activity")
+                    if (isLoggingActivity) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("Logging...")
+                    } else {
+                        Icon(Icons.Default.DirectionsWalk, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Log Activity")
+                    }
                 }
-
-                if (errorMessage != null) {
-                    Text(
-                        text = errorMessage ?: "",
-                        color = Color(0xFFD32F2F),
-                        fontSize = 12.sp
+            }
+        } else {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        Icons.Default.ErrorOutline,
+                        null,
+                        modifier = Modifier.size(64.dp),
+                        tint = Color(0xFF9E9E9E)
                     )
+                    Text(
+                        text = errorMessage ?: "Trail not found",
+                        fontSize = 16.sp,
+                        color = Color(0xFF757575)
+                    )
+                    Button(onClick = onBack) {
+                        Text("Go Back")
+                    }
                 }
             }
         }
@@ -282,7 +348,7 @@ private fun Chip(text: String) {
 
 @Composable
 private fun StatItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     value: String,
     label: String
 ) {

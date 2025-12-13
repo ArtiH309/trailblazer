@@ -57,8 +57,8 @@ class TrailMapViewModel : ViewModel() {
                 val parks = ApiClient.service.getParksNearby(near, radiusKm)
 
                 val trailPins = trails.mapNotNull { t ->
-                    val lat = t.lat ?: return@mapNotNull null
-                    val lng = t.lng ?: return@mapNotNull null
+                    val lat = t.lat ?: t.latitude ?: return@mapNotNull null
+                    val lng = t.lng ?: t.lngAlt ?: t.longitude ?: return@mapNotNull null
                     TrailPin(t.id.toString(), t.name, lat, lng)
                 }
 

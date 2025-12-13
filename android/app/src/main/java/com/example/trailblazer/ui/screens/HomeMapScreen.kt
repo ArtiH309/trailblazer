@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.PhotoLibrary
@@ -14,7 +15,9 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,6 +39,7 @@ import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 
 @SuppressLint("MissingPermission")
+
 @Composable
 fun HomeMapScreen(
     vm: TrailMapViewModel = viewModel(),
@@ -46,6 +50,7 @@ fun HomeMapScreen(
     val state by vm.ui.collectAsState()
     val mapView = rememberMapViewWithLifecycle()
     var googleMap by remember { mutableStateOf<GoogleMap?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
 
     // Store trail ID -> Marker mapping
     val markerToTrailId = remember { mutableMapOf<Marker, Int>() }
@@ -57,8 +62,13 @@ fun HomeMapScreen(
                 mapView.apply {
                     getMapAsync { gMap ->
                         googleMap = gMap
+                        // ENABLE zoom and all gestures
                         gMap.uiSettings.isZoomControlsEnabled = false
-                        gMap.uiSettings.isMapToolbarEnabled = false
+                        gMap.uiSettings.isZoomGesturesEnabled = true
+                        gMap.uiSettings.isScrollGesturesEnabled = true
+                        gMap.uiSettings.isRotateGesturesEnabled = true
+                        gMap.uiSettings.isTiltGesturesEnabled = true
+                        gMap.uiSettings.isMapToolbarEnabled = true
                         try { gMap.isMyLocationEnabled = true } catch (_: SecurityException) {}
 
                         // Initial camera position (NYC/NJ area)
@@ -71,7 +81,7 @@ fun HomeMapScreen(
                             val trailId = markerToTrailId[marker]
                             if (trailId != null) {
                                 onTrailClick(trailId)
-                                true // Consume the event
+                                true
                             } else {
                                 false
                             }
@@ -92,7 +102,6 @@ fun HomeMapScreen(
                                     .position(LatLng(pin.lat, pin.lng))
                                     .title(pin.name)
                             )
-                            // Store the trail ID for this marker
                             if (marker != null) {
                                 markerToTrailId[marker] = pin.id.toInt()
                             }
@@ -102,9 +111,34 @@ fun HomeMapScreen(
                 }
             },
             modifier = Modifier.fillMaxSize()
+
         )
 
-        // Top Bar with Search
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 16.dp, bottom = 120.dp), // bump above bottom nav
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            FloatingActionButton(
+                onClick = { googleMap?.animateCamera(CameraUpdateFactory.zoomIn()) },
+                containerColor = Color.White,
+                contentColor = Color(0xFF4CAF50)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Zoom in")
+            }
+
+            FloatingActionButton(
+                onClick = { googleMap?.animateCamera(CameraUpdateFactory.zoomOut()) },
+                containerColor = Color.White,
+                contentColor = Color(0xFF4CAF50)
+            ) {
+                Icon(Icons.Default.Remove, contentDescription = "Zoom out")
+            }
+        }
+
+        // Top Bar with FUNCTIONAL Search
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -121,16 +155,25 @@ fun HomeMapScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            // Search Bar
+            // FUNCTIONAL Search Bar
             OutlinedTextField(
-                value = "",
-                onValueChange = {},
+                value = searchQuery,
+                onValueChange = {
+                    searchQuery = it
+                },
                 placeholder = { Text("Search trails...") },
                 leadingIcon = {
                     Icon(Icons.Default.Search, null, tint = Color(0xFF757575))
                 },
                 trailingIcon = {
-                    Icon(Icons.Default.FilterList, null, tint = Color(0xFF757575))
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = {
+                            searchQuery = ""
+                            vm.clearSearch()
+                        }) {
+                            Icon(Icons.Default.Clear, "Clear", tint = Color(0xFF757575))
+                        }
+                    }
                 },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
@@ -139,81 +182,28 @@ fun HomeMapScreen(
                     unfocusedBorderColor = Color(0xFFE0E0E0),
                     focusedContainerColor = Color.White,
                     unfocusedContainerColor = Color.White
-                )
+                ),
+                singleLine = true
             )
-        }
 
-        // Bottom Trail Card
-        when (val ui = state) {
-            is TrailUiState.Ready -> {
-                if (ui.trails.isNotEmpty()) {
-                    val trail = ui.trails.first()
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .align(Alignment.BottomCenter)
-                            .padding(16.dp)
-                            .padding(bottom = 80.dp)
-                            .clickable { onTrailClick(trail.id.toInt()) },
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        elevation = CardDefaults.cardElevation(8.dp),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Trail Image
-                            Box(
-                                modifier = Modifier
-                                    .size(60.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(Color(0xFFE8F5E9)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.PhotoLibrary,
-                                    contentDescription = null,
-                                    tint = Color(0xFF4CAF50),
-                                    modifier = Modifier.size(32.dp)
-                                )
-                            }
-
-                            Spacer(Modifier.width(12.dp))
-
-                            // Trail Info
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = trail.name,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color(0xFF212121)
-                                )
-                                Text(
-                                    text = "Tap to view details",
-                                    fontSize = 13.sp,
-                                    color = Color(0xFF757575)
-                                )
-                            }
-
-                            // View Button
-                            Button(
-                                onClick = { onTrailClick(trail.id.toInt()) },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFF4CAF50)
-                                ),
-                                shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                            ) {
-                                Text("View Details", fontSize = 13.sp)
-                            }
-                        }
-                    }
+            // Search button
+            if (searchQuery.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                Button(
+                    onClick = {
+                        vm.searchTrails(searchQuery)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF4CAF50)
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(Icons.Default.Search, "Search", modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Search")
                 }
             }
-            else -> Unit
         }
 
         // Bottom Navigation Bar

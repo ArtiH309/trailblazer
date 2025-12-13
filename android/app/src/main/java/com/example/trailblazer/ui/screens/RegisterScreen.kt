@@ -37,6 +37,8 @@ fun RegisterScreen(
     var password by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var showGoogleMessage by remember { mutableStateOf(false) }
+    var showAppleMessage by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
 
@@ -168,7 +170,7 @@ fun RegisterScreen(
                             LoginRequest(email = email, password = password)
                         )
                         AuthStore.token = auth.accessToken
-                        // Let the parent know registration succeeded (for navigation)
+                        // Let the parent know registration succeeded
                         onRegisterClick(fullName, email, password)
                     } catch (e: Exception) {
                         errorMessage = e.message ?: "Something went wrong. Please try again."
@@ -224,9 +226,12 @@ fun RegisterScreen(
 
         Spacer(Modifier.height(24.dp))
 
-        // Continue with Google
+        // Continue with Google - WITH FEEDBACK
         OutlinedButton(
-            onClick = onGoogleClick,
+            onClick = {
+                showGoogleMessage = true
+                onGoogleClick()
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
@@ -242,11 +247,24 @@ fun RegisterScreen(
             )
         }
 
+        if (showGoogleMessage) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Google Sign-In coming soon!",
+                fontSize = 12.sp,
+                color = Color(0xFF2196F3),
+                fontWeight = FontWeight.Medium
+            )
+        }
+
         Spacer(Modifier.height(12.dp))
 
-        // Continue with Apple
+        // Continue with Apple - WITH FEEDBACK
         Button(
-            onClick = onAppleClick,
+            onClick = {
+                showAppleMessage = true
+                onAppleClick()
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
@@ -258,6 +276,16 @@ fun RegisterScreen(
             Text(
                 text = "Continue with Apple",
                 fontSize = 15.sp
+            )
+        }
+
+        if (showAppleMessage) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Apple Sign-In coming soon!",
+                fontSize = 12.sp,
+                color = Color(0xFF2196F3),
+                fontWeight = FontWeight.Medium
             )
         }
 
