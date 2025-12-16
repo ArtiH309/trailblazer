@@ -9,8 +9,9 @@ Starts up our database for Trailblazer.
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, declarative_base
+import os
 
-DATABASE_URL = "sqlite:///./trailblazer.db"
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./trailblazer.db")
 
 # SQLite needs this connect arg in multi-threaded apps like FastAPI’s dev server.
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
